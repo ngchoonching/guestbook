@@ -4,7 +4,8 @@ require "schema.php";
 ensure_schema($conn);
 
 // READ — fetch all messages, newest first.
-$result = $conn->query("SELECT * FROM messages ORDER BY created_at DESC, id DESC");
+$stmt = $conn->query("SELECT * FROM messages ORDER BY created_at DESC, id DESC");
+$messages = $stmt->fetchAll();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -17,7 +18,7 @@ $result = $conn->query("SELECT * FROM messages ORDER BY created_at DESC, id DESC
 <body>
   <main class="wrap">
     <h1>Guestbook</h1>
-    <p class="count"><?= (int)$result->num_rows ?> message<?= $result->num_rows === 1 ? "" : "s" ?> so far</p>
+    <p class="count"><?= count($messages) ?> message<?= count($messages) === 1 ? "" : "s" ?> so far</p>
 
     <?php if (isset($_GET["error"])): ?>
       <p class="error">
@@ -39,7 +40,7 @@ $result = $conn->query("SELECT * FROM messages ORDER BY created_at DESC, id DESC
     </form>
 
     <!-- READ — one card per message -->
-    <?php while ($row = $result->fetch_assoc()): ?>
+    <?php foreach ($messages as $row): ?>
       <article class="card message">
         <div class="meta">
           <strong><?= htmlspecialchars($row["name"]) ?></strong>
@@ -55,7 +56,7 @@ $result = $conn->query("SELECT * FROM messages ORDER BY created_at DESC, id DESC
           </form>
         </div>
       </article>
-    <?php endwhile; ?>
+    <?php endforeach; ?>
   </main>
 </body>
 </html>

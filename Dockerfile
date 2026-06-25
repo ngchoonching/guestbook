@@ -1,17 +1,19 @@
 FROM php:8.2-apache
 
-# mysqli is the MySQL driver used in db.php.
-RUN docker-php-ext-install mysqli && docker-php-ext-enable mysqli
+# Install the PostgreSQL PDO driver used in db.php.
+# libpq-dev provides the headers needed to build pdo_pgsql.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends libpq-dev \
+ && docker-php-ext-install pdo_pgsql \
+ && rm -rf /var/lib/apt/lists/*
 
 # Copy the application into Apache's web root.
 COPY src/ /var/www/html/
 
-# Render assigns a dynamic $PORT and expects the app to listen on it.
-# Locally $PORT is unset, so we default to 80 (what docker-compose maps).
-# This entrypoint rewrites Apache's port to $PORT at container start.
-COPY render-entrypoint.sh /usr/local/bin/render-entrypoint.sh
-RUN chmod +x /usr/local/bin/render-entrypoint.sh
+# Listen on the host-provided $PORT (falls back to 80 locally).
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 EXPOSE 80
-ENTRYPOINT ["/usr/local/bin/render-entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["apache2-foreground"]

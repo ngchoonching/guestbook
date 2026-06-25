@@ -6,15 +6,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $id      = (int)($_POST["id"] ?? 0);
     $message = trim($_POST["message"] ?? "");
 
-    if ($message === "" || strlen($message) > 500) {
+    if ($message === "" || mb_strlen($message) > 500) {
         header("Location: edit.php?id=" . $id . "&error=length");
         exit;
     }
 
     // UPDATE — WHERE id = ? targets exactly one row.
     $stmt = $conn->prepare("UPDATE messages SET message = ? WHERE id = ?");
-    $stmt->bind_param("si", $message, $id);
-    $stmt->execute();
+    $stmt->execute([$message, $id]);
 
     header("Location: index.php");
     exit;
@@ -23,9 +22,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 // GET — load the one row to pre-fill the form.
 $id   = (int)($_GET["id"] ?? 0);
 $stmt = $conn->prepare("SELECT * FROM messages WHERE id = ?");
-$stmt->bind_param("i", $id);
-$stmt->execute();
-$row = $stmt->get_result()->fetch_assoc();
+$stmt->execute([$id]);
+$row = $stmt->fetch();
 
 if (!$row) {
     header("Location: index.php");

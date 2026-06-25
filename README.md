@@ -1,130 +1,79 @@
-# Guestbook — PHP & MySQL
+# Guestbook — PHP & PostgreSQL (Render-ready)
 
-A small PHP + MySQL app with full CRUD (Create, Read, Update, Delete).
-Runs locally with Docker Compose, and deploys to **Render** using the
-included `Dockerfile` plus an external MySQL database.
+A PHP + Apache app with full CRUD over a **PostgreSQL** database. Built to
+deploy on **Render**, using Render's free managed PostgreSQL — no external
+database or paid disk required.
 
----
-
-## What's in here
+Uses PDO with the `pdo_pgsql` driver.
 
 ```
-guestbook/
-├─ Dockerfile              # builds the PHP+Apache image (used locally AND on Render)
-├─ render-entrypoint.sh    # makes Apache listen on Render's $PORT
-├─ docker-compose.yml      # LOCAL ONLY: web + db + phpMyAdmin
-├─ db/
-│  └─ init.sql             # LOCAL ONLY: seeds the table on first run
+gb-pg/
+├─ Dockerfile           # PHP 8.2 + Apache + pdo_pgsql
+├─ entrypoint.sh        # listens on the host-provided $PORT (else 80)
+├─ docker-compose.yml   # local dev: app + Postgres + Adminer
 └─ src/
-   ├─ db.php               # shared MySQL connection (reads env vars)
-   ├─ schema.php           # creates + seeds the table (for Render)
-   ├─ index.php            # READ   — list messages + add form
-   ├─ create.php           # CREATE — save a new message
-   ├─ edit.php             # UPDATE — edit one message
-   ├─ delete.php           # DELETE — remove one message
-   └─ style.css            # styling
+   ├─ db.php            # PDO connection (DATABASE_URL or discrete DB_* vars)
+   ├─ schema.php        # creates + seeds the table on first use
+   ├─ index.php         # READ   — list + add form
+   ├─ create.php        # CREATE
+   ├─ edit.php          # UPDATE
+   ├─ delete.php        # DELETE
+   └─ style.css
 ```
 
-The connection in `db.php` reads from environment variables
-(`DB_HOST`, `DB_USER`, `DB_PASS`, `DB_NAME`, `DB_PORT`), so the **same code**
-runs locally and on Render — only the values change.
+## How the connection is configured
 
----
+The app reads **either**:
 
-## Run it locally
+- `DATABASE_URL` — a single connection string. Render's managed Postgres
+  provides this automatically when you link the database to the service. This
+  is the easiest path. Format: `postgres://user:pass@host:port/dbname`
+- or the discrete vars `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS`
+  (used by the local compose file).
 
-You need Docker Desktop.
+`DATABASE_URL` takes priority if both are present. SSL mode defaults to
+`require` (Render needs it); locally compose sets `DB_SSLMODE=disable`.
+
+## Run locally
 
 ```bash
 docker compose up
 ```
 
-- App:        http://localhost:8080
-- phpMyAdmin: http://localhost:8081  (server `db`, user `appuser`, pass `apppass`)
+- App:     http://localhost:8080
+- Adminer: http://localhost:8081  (System: PostgreSQL, Server: `db`,
+  user `appuser`, pass `apppass`, database `guestbook`)
 
-You should see two seeded messages from Ada and Linus. Add, edit, and delete
-messages to confirm CRUD works. Stop with `Ctrl+C`, or `docker compose down`.
-
----
+You should see two seeded messages. Add, edit, delete to exercise CRUD.
 
 ## Deploy to Render
 
-Render does **not** run `docker-compose.yml`. Instead you create two things:
-a **MySQL database** (external) and a **Web Service** (built from the Dockerfile).
+### 1. Create the database
+In Render: **New → PostgreSQL**. Pick the free plan. When it's ready, note that
+Render exposes its connection string as an environment variable you can link.
 
-### Step 1 — Push to GitHub
-
+### 2. Push this repo to GitHub
 ```bash
-cd guestbook
-git init
-git add .
-git commit -m "Guestbook: PHP + MySQL CRUD"
+git init && git add . && git commit -m "Guestbook: PHP + PostgreSQL"
 git branch -M main
-git remote add origin https://github.com/<your-username>/guestbook.git
+git remote add origin https://github.com/<you>/gb-pg.git
 git push -u origin main
 ```
 
-### Step 2 — Get a MySQL database
+### 3. Create the web service
+- **New → Web Service**, connect the repo. Render detects the Dockerfile.
+- Choose the **Free** instance type.
+- Under **Environment**, add the database connection. The simplest way:
+  add a variable named `DATABASE_URL` and use the
+  **"Add from database"** / Internal Connection String of your Postgres
+  instance so the two are linked.
+- Create the service and wait for the build.
 
-Render's built-in managed database is PostgreSQL, not MySQL, so use a free
-external MySQL host. Any of these work — pick one and create a database:
+`schema.php` creates and seeds the table on the first page load, so there's no
+manual SQL step. Open the `onrender.com` URL — you should see the guestbook.
 
-- **Aiven** (free MySQL plan)
-- **Railway** (MySQL plugin)
-- **PlanetScale** (MySQL-compatible)
-
-From its dashboard, copy these five values — you'll paste them into Render:
-
-| Value      | Example                  |
-|------------|--------------------------|
-| host       | `mysql-xxxx.aivencloud.com` |
-| port       | `3306` (or whatever it gives) |
-| database   | `guestbook` (create it if needed) |
-| user       | `appuser` / `avnadmin` / etc. |
-| password   | `••••••••`                |
-
-> No need to run `init.sql` by hand — `schema.php` creates the table and
-> seeds it automatically on the first page load.
-
-### Step 3 — Create the Web Service on Render
-
-1. In Render: **New → Web Service**.
-2. Connect your GitHub repo (`guestbook`).
-3. Render auto-detects the `Dockerfile`. Leave build/start commands blank.
-4. Choose the **Free** instance type.
-5. Under **Environment**, add these variables (from Step 2):
-
-   ```
-   DB_HOST = <your mysql host>
-   DB_PORT = <your mysql port>
-   DB_NAME = guestbook
-   DB_USER = <your mysql user>
-   DB_PASS = <your mysql password>
-   ```
-
-6. Click **Create Web Service**. Render builds the image and deploys it.
-
-When the build finishes, open the `onrender.com` URL. You should see the
-guestbook with the two seeded messages, and full CRUD should work.
-
----
-
-## Things to expect
-
-- **First load is slow / 502 then works:** Render free web services spin down
-  when idle and take ~30–60s to wake on the next request. Reload once.
-- **"Database connection failed":** double-check the five env vars, and that
-  your MySQL host allows external connections (some require enabling public
-  access or whitelisting `0.0.0.0/0`).
-- **Table not appearing:** `schema.php` runs on first request — load the app
-  once, then check your DB host's console.
-
----
-
-## Safety notes (already implemented)
-
-- **Prepared statements** for every query that takes user input (`create.php`,
-  `edit.php`, `delete.php`) — safe from SQL injection.
-- **`htmlspecialchars()`** on every value printed to the page — safe from XSS.
-- **Post/Redirect/Get**: writes redirect back to `index.php` so a refresh
-  doesn't re-submit.
+## Notes
+- First request after the free service idles is slow (cold start) — reload once.
+- Use Render's **Internal** database URL for the web service (faster, and it
+  keeps the database off the public internet). The External URL is for
+  connecting from your laptop.

@@ -1,8 +1,11 @@
-# LOCAL development only. Render does NOT use this file — it builds the
-# Dockerfile instead and you attach a database separately.
+# LOCAL development. On Render you don't use this file — you create a managed
+# PostgreSQL instance and link it (which provides DATABASE_URL), then deploy
+# the web service from the Dockerfile.
 #
-#   docker compose up        -> app at http://localhost:8080
-#                               phpMyAdmin at http://localhost:8081
+#   docker compose up   ->  app at http://localhost:8080
+#                           Adminer (DB browser) at http://localhost:8081
+#
+# Locally there's no SSL on the Postgres container, so DB_SSLMODE=disable.
 
 services:
   web:
@@ -11,32 +14,31 @@ services:
       - "8080:80"
     environment:
       DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: guestbook
       DB_USER: appuser
       DB_PASS: apppass
-      DB_NAME: guestbook
-      DB_PORT: 3306
+      DB_SSLMODE: disable
     depends_on:
       - db
 
   db:
-    image: mysql:8.0
+    image: postgres:16
     environment:
-      MYSQL_DATABASE: guestbook
-      MYSQL_USER: appuser
-      MYSQL_PASSWORD: apppass
-      MYSQL_ROOT_PASSWORD: rootpass
-    volumes:
-      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-      - dbdata:/var/lib/mysql
-
-  phpmyadmin:
-    image: phpmyadmin:latest
+      POSTGRES_DB: guestbook
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: apppass
     ports:
-      - "8081:80"
-    environment:
-      PMA_HOST: db
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  adminer:
+    image: adminer:latest
+    ports:
+      - "8081:8080"
     depends_on:
       - db
 
 volumes:
-  dbdata:
+  pgdata:
