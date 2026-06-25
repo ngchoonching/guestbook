@@ -1,0 +1,42 @@
+# LOCAL development only. Render does NOT use this file — it builds the
+# Dockerfile instead and you attach a database separately.
+#
+#   docker compose up        -> app at http://localhost:8080
+#                               phpMyAdmin at http://localhost:8081
+
+services:
+  web:
+    build: .
+    ports:
+      - "8080:80"
+    environment:
+      DB_HOST: db
+      DB_USER: appuser
+      DB_PASS: apppass
+      DB_NAME: guestbook
+      DB_PORT: 3306
+    depends_on:
+      - db
+
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: guestbook
+      MYSQL_USER: appuser
+      MYSQL_PASSWORD: apppass
+      MYSQL_ROOT_PASSWORD: rootpass
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - dbdata:/var/lib/mysql
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: db
+    depends_on:
+      - db
+
+volumes:
+  dbdata:
