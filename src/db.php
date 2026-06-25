@@ -4,7 +4,7 @@
 // works locally (docker compose) and on Render (env vars in dashboard).
 // The fallback values match the local docker-compose.yml.
 
-$host = getenv("DB_HOST") ?: "guestbook-gjhc.onrender.com";
+$host = getenv("DB_HOST") ?: "localhost";
 $user = getenv("DB_USER") ?: "appuser";
 $pass = getenv("DB_PASS") ?: "apppass";
 $name = getenv("DB_NAME") ?: "guestbook";
