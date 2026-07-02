@@ -36,7 +36,7 @@ $messages = $stmt->fetchAll();
     <form class="card form" action="create.php" method="post">
       <input name="name" placeholder="Your name" maxlength="80" required>
       <textarea name="message" placeholder="Leave a message…" maxlength="500" required></textarea>
-      <button type="submit">Sign the guestbook</button>
+      <button type="submit">Sign the web programming </button>
     </form>
 
     <!-- READ — one card per message -->
