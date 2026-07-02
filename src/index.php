@@ -17,7 +17,7 @@ $messages = $stmt->fetchAll();
 </head>
 <body>
   <main class="wrap">
-    <h1>Guestbook 123</h1>
+    <h1>Guestbook Web Programming</h1>
     <p class="count"><?= count($messages) ?> message<?= count($messages) === 1 ? "" : "s" ?> so far</p>
 
     <?php if (isset($_GET["error"])): ?>
